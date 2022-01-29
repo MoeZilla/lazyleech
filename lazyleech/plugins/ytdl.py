@@ -117,7 +117,7 @@ user_search = defaultdict(list)
 
 @Client.on_message(filters.command("ytdl"))
 async def iytdl_inline(client: Client, message: Message):
-    if not message.chat.id in ALL_CHATS:
+    if message.chat.id not in ALL_CHATS:
         return
     reply = message.reply_to_message
     input_url = None
@@ -260,16 +260,15 @@ async def ytdl_callback(_, c_q: CallbackQuery):
     choosen_btn = c_q.matches[0].group(1)
     data_key = c_q.matches[0].group(2)
     page = c_q.matches[0].group(3)
-    if os.path.exists(PATH):
-        with open(PATH) as f:
-            view_data = ujson.load(f)
-        search_data = view_data.get(data_key)
-        total = len(search_data)
-    else:
+    if not os.path.exists(PATH):
         return await c_q.answer(
             "Search data doesn't exists anymore, please perform search again ...",
             show_alert=True,
         )
+    with open(PATH) as f:
+        view_data = ujson.load(f)
+    search_data = view_data.get(data_key)
+    total = len(search_data)
     if choosen_btn == "back":
         index = int(page) - 1
         del_back = index == 1
@@ -312,9 +311,10 @@ async def ytdl_callback(_, c_q: CallbackQuery):
         )
     elif choosen_btn == "listall":
         await c_q.answer("View Changed to:  📜  List", show_alert=False)
-        list_res = ""
-        for vid_s in search_data:
-            list_res += search_data.get(vid_s).get("list_view")
+        list_res = "".join(
+            search_data.get(vid_s).get("list_view") for vid_s in search_data
+        )
+
         telegraph = post_to_telegraph(
             a_title=f"Showing {total} youtube video results for the given query ...",
             content=list_res,
@@ -423,9 +423,7 @@ def _mp3Dl(url: str, starttime, uid: str):
 
 
 def get_yt_video_id(url: str):
-    # https://regex101.com/r/c06cbV/1
-    match = YOUTUBE_REGEX.search(url)
-    if match:
+    if match := YOUTUBE_REGEX.search(url):
         return match.group(1)
 
 
